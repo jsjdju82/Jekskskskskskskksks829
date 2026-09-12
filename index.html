@@ -43,7 +43,7 @@ TUNA master:
 import { beginCell, Address } from "https://esm.sh/@ton/core@0.63.0";
 
 const POOL = "kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3";
-const TUNA_MASTER = "kQAiQ2XK7R2Mhf4m-Aiotx";
+const TUNA_MASTER = "kQAiQ2XK7BXePLwemeo-u4wNyjg-wxGeySmaFGEP7R2Mhf4m";
 const TESTNET = "-3";
 const TONAPI = "https://testnet.tonapi.io/v2";
 const $ = id => document.getElementById(id);
@@ -108,7 +108,7 @@ async function getBalanceFromAPI(owner){
     if(r.ok){
       const j = await r.json();
       const tuna = (j.balances || []).find(x => {
-        try { return Address.parse(x.jetton.address).equals(Address.parse(TUNA_MASTER)); }
+        try { return rawAddress(x.jetton.address) === rawAddress(TUNA_MASTER); }
         catch(e){ return false; }
       });
       if(tuna){
