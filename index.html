@@ -1,55 +1,14 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tonstakers Testnet — Stake • TUNA • Profit</title>
-<script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script>
-<style>
-body{margin:0;background:#101522;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.card{max-width:720px;margin:24px auto;padding:26px;border-radius:24px;background:#202a3a;box-sizing:border-box}
-h1{font-size:30px;margin:0 0 10px}.sub{color:#aab4c5;font-size:17px;line-height:1.45}
-.row{margin:17px 0;font-size:17px}.ok{color:#58e0a0}.warn{color:#ffd24d}
-button{width:100%;border:0;border-radius:18px;padding:18px;font-size:20px;font-weight:700;background:#63b9ee;color:#082039;margin-top:14px}
-button:disabled{opacity:.45}input{background:#fff;color:#111;border:0}.small{color:#aab4c5;font-size:13px;line-height:1.5;margin-top:18px;word-break:break-word}
-#status{margin-top:18px;white-space:pre-wrap;line-height:1.45}
-.addr{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all}
-</style>
-</head>
-<body>
-<div class="card">
-<h1>Tonstakers Testnet — Stake • TUNA</h1>
-<div class="sub">V8 FINAL: стейкинг, TUNA, on-chain курс TUNA → TON, APY и расчёт прибыли. Данные читаются из Testnet-пула; ничего не рисуется.</div>
-<div id="ton-connect" style="margin:20px 0"></div>
-<div class="row">Сеть: <span id="network" class="warn">не подключена</span></div>
-<div class="row">TON в кошельке: <b id="tonBal">—</b></div>
-<div class="row">TUNA: <b id="bal">проверяем…</b></div>
-<div class="row">TUNA → TON: <b id="rate">—</b></div>
-<div class="row">Стоимость стейка: <b id="value">—</b></div>
-<div class="row">APY пула: <b id="apy">—</b></div>
-<div class="row">Прибыль с момента старта: <b id="profit">—</b></div>
-<div class="row">Обновление: <span id="updated">—</span></div>
-<div class="row">TUNA Jetton Wallet: <span id="jw" class="addr">—</span></div>
-<label class="row" style="display:block">Застейкать TON
-  <input id="stakeAmount" inputmode="decimal" value="0" style="width:100%;box-sizing:border-box;margin-top:8px;padding:16px;border-radius:14px;border:0;font-size:18px">
-</label>
-<button id="stake" disabled>Застейкать TON</button>
-<button id="maxStake" disabled>Застейкать максимум</button>
-<button id="unstake" disabled>Вывести TUNA</button>
-<button id="refresh" disabled>Обновить данные</button>
-<div id="status"></div>
-<div class="small">
-Пул: <span class="addr">kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3</span><br>
-TUNA master: <span class="addr">kQAiQ2XK7BXePLwemeo-u4wNyjg-wxGeySmaFGEP7R2Mhf4m</span><br><br>
-Стейкинг: по payload Tonstakers SDK <span class="addr">0x47d54391</span>.<br>
-Вывод: по payload Tonstakers SDK <span class="addr">0x595f07bc</span>.<br>
-Курс TUNA → TON считается из pool full data (total_balance / supply). Прибыль считается от сохранённой точки старта в этом браузере.<br><br>
-Перед подтверждением всегда проверь Tonkeeper: для stake получатель должен быть пулом, для unstake — TUNA Jetton Wallet.<br>
-Не вводи seed-фразу.
-</div>
-</div>
-
-<script type="module">
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090b12"><title>TUNA Stake • Testnet</title><script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script><style>
+:root{--bg:#090b12;--panel:#111521;--panel2:#171c29;--line:rgba(255,255,255,.08);--muted:#8f98aa;--text:#f7f8fb;--accent:#5cc8ff;--good:#48e0a2;--bad:#ff6b7a;--shadow:0 18px 60px rgba(0,0,0,.28)}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(900px 500px at 50% -120px,rgba(76,196,255,.16),transparent 65%),var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}.app{width:min(100%,760px);margin:0 auto;padding:20px 16px 44px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 22px}.brand{display:flex;align-items:center;gap:11px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#9eeaff,#3fa9e8);display:grid;place-items:center;color:#06121d;font-weight:900}.brand strong{display:block;font-size:17px}.brand span{display:block;color:var(--muted);font-size:12px;margin-top:2px}.network{border:1px solid rgba(72,224,162,.22);background:rgba(72,224,162,.08);color:var(--good);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:700}.hero{background:linear-gradient(145deg,rgba(25,31,45,.96),rgba(14,18,28,.96));border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow)}.wallet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.wallet-pill{min-width:0;border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:15px;padding:10px 13px;color:#dfe5ef;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.connect-wrap{flex:none}.hero-label{color:var(--muted);font-size:13px;margin-bottom:6px}.hero-value{font-size:clamp(38px,10vw,64px);font-weight:800;letter-spacing:-2px;line-height:1.03}.hero-value small{font-size:.42em;letter-spacing:0;color:#aeb7c7;margin-left:5px}.hero-sub{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;margin-top:10px}.dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px rgba(72,224,162,.08)}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:18px;padding:16px}.stat .k{color:var(--muted);font-size:12px;margin-bottom:7px}.stat .v{font-size:19px;font-weight:750}.stat .good{color:var(--good)}.section{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:18px}.section-title{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:750;margin-bottom:13px}.hint{font-size:11px;color:var(--muted);font-weight:500}.amount{position:relative}.amount input{width:100%;border:1px solid var(--line);outline:0;background:#f7f8fb;color:#10131b;border-radius:18px;padding:19px 76px 19px 18px;font-size:24px;font-weight:700}.amount span{position:absolute;right:17px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:800;color:#6f7785}.quick{display:flex;gap:8px;margin-top:9px}.quick button{flex:1;background:#1c2331;border:1px solid var(--line);color:#cbd2de;border-radius:12px;padding:9px;font-size:12px;font-weight:700}.primary,.secondary,.danger{width:100%;border-radius:17px;padding:17px 18px;margin-top:10px;font-size:17px;font-weight:800;cursor:pointer}.primary{border:0;background:linear-gradient(135deg,#71d4ff,#4fb4ef);color:#06121d;box-shadow:0 12px 32px rgba(80,188,242,.18)}.secondary{background:#1c2331;color:#f0f3f8;border:1px solid var(--line)}.danger{background:rgba(255,107,122,.10);color:#ff8d99;border:1px solid rgba(255,107,122,.2)}button:disabled{opacity:.42;cursor:not-allowed}.rowline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}.rowline:last-child{border-bottom:0;padding-bottom:0}.rowline:first-child{padding-top:0}.rowline .label{color:var(--muted)}.rowline .val{max-width:70%;overflow:hidden;text-overflow:ellipsis;text-align:right}.addr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.status{white-space:pre-wrap;line-height:1.45;color:#c5ccda;font-size:12px;margin-top:13px}.status.ok{color:var(--good)}.status.err{color:#ff9ba5}.footer{color:#687184;font-size:11px;line-height:1.55;padding:16px 4px 0;text-align:center}@media(min-width:600px){.app{padding-top:30px}.stats{grid-template-columns:repeat(4,1fr)}}
+</style></head><body><main class="app">
+<header class="top"><div class="brand"><div class="logo">T</div><div><strong>TUNA Stake</strong><span>Tonstakers Testnet</span></div></div><div id="network" class="network">TESTNET</div></header>
+<section class="hero"><div class="wallet-row"><div id="walletPill" class="wallet-pill">Кошелёк не подключён</div><div id="ton-connect"></div></div><div class="hero-label">Стоимость стейка</div><div class="hero-value"><span id="value">—</span><small>TON</small></div><div class="hero-sub"><span class="dot"></span><span id="updated">Ожидание данных</span></div><div class="stats"><div class="stat"><div class="k">TUNA</div><div id="bal" class="v">—</div></div><div class="stat"><div class="k">TUNA → TON</div><div id="rate" class="v">—</div></div><div class="stat"><div class="k">APY пула</div><div id="apy" class="v">—</div></div><div class="stat"><div class="k">Доход (оценка)</div><div id="profit" class="v">—</div></div></div></section>
+<section class="section"><div class="section-title"><span>Застейкать TON</span><span class="hint">минимум 1 TON</span></div><div class="amount"><input id="stakeAmount" inputmode="decimal" value="0"><span>TON</span></div><div class="quick"><button id="q25" type="button">25%</button><button id="q50" type="button">50%</button><button id="q75" type="button">75%</button><button id="q100" type="button">MAX</button></div><button id="stake" class="primary" disabled>Застейкать TON</button><button id="maxStake" class="secondary" disabled>Застейкать максимум</button></section>
+<section class="section"><div class="section-title"><span>Позиция</span><span class="hint">on-chain</span></div><div class="rowline"><span class="label">TON в кошельке</span><b id="tonBal">—</b></div><div class="rowline"><span class="label">Свободно для стейкинга</span><b id="available">—</b></div><div class="rowline"><span class="label">TUNA Jetton Wallet</span><span id="jw" class="val addr">—</span></div><div class="rowline"><span class="label">Доход (оценка)</span><b id="profit2">—</b></div></section>
+<section class="section"><div class="section-title"><span>Вывод</span><span class="hint">TUNA → TON</span></div><button id="unstake" class="danger" disabled>Вывести TUNA</button><button id="refresh" class="secondary" disabled>Обновить данные</button><div id="status" class="status">Подключи Testnet-кошелёк.</div></section>
+<div class="footer">Данные берутся из Testnet TonAPI и on-chain pool. Автообновление только читает данные и никогда само не отправляет транзакции.<br>Перед подписью проверь получателя и сумму в Tonkeeper. Seed-фраза здесь не нужна.</div>
+</main><script type="module">
 
 import { beginCell, Address, toNano } from "https://esm.sh/@ton/core@0.63.0";
 
@@ -65,11 +24,7 @@ const ui = new TON_CONNECT_UI.TonConnectUI({
 });
 try { ui.setConnectionNetwork(TESTNET); } catch(e) {}
 
-let jettonWallet = null;
-let tunaBalance = 0n;
-let tunaRate = 0;
-let currentApy = null;
-let refreshTimer = null;
+let jettonWallet=null,tunaBalance=0n,tunaRate=0,currentApy=null,refreshTimer=null;
 
 function status(s){ $("status").textContent=s; }
 
@@ -90,31 +45,43 @@ async function api(path){
 
 async function getJettonWalletDirect(owner){
   const master=rawAddress(TUNA_MASTER), ownerRaw=rawAddress(owner);
-  const j=await api(`/blockchain/accounts/${master}/methods/get_wallet_address?args=${encodeURIComponent(ownerRaw)}`);
+  const u=new URL(`${TONAPI}/blockchain/accounts/${master}/methods/get_wallet_address`);
+  u.searchParams.append("args", ownerRaw);
+  const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw new Error(`TonAPI ${r.status}`);
+  const j=await r.json();
   const candidate=j?.decoded?.jetton_wallet_address||j?.decoded?.jettonWalletAddress;
-  if(candidate){
-    const a=(typeof candidate==="string"&&candidate.includes(":"))?Address.parse(candidate):Address.parseFriendly(candidate).address;
-    return a.toString({testOnly:true,bounceable:true});
-  }
-  throw new Error("TonAPI не вернул TUNA Jetton Wallet");
+  if(!candidate) throw new Error("Jetton Wallet address not returned");
+  const a=(typeof candidate==="string"&&candidate.includes(":"))?Address.parse(candidate):Address.parseFriendly(candidate).address;
+  return a.toString({testOnly:true,bounceable:true});
 }
 
-async function getTunaBalance(owner){
+async function getTunaState(owner){
+  const ownerRaw=rawAddress(owner), masterRaw=rawAddress(TUNA_MASTER);
   try{
-    const jw=await getJettonWalletDirect(owner);
-    const j=await api(`/blockchain/accounts/${rawAddress(jw)}/methods/get_wallet_data`);
+    const j=await api(`/accounts/${encodeURIComponent(ownerRaw)}/jettons/${encodeURIComponent(masterRaw)}`);
+    const b=j?.balance;
+    let wr=j?.wallet_address?.address||j?.wallet_address||j?.jetton_wallet_address?.address||j?.jetton_wallet_address;
+    let wallet=wr?Address.parse(wr).toString({testOnly:true,bounceable:true}):null;
+    if(b!==undefined&&b!==null){ if(!wallet) wallet=await getJettonWalletDirect(owner); return {balance:BigInt(b),wallet}; }
+  }catch(e){}
+  try{
+    const j=await api(`/accounts/${encodeURIComponent(ownerRaw)}/jettons`);
+    const tuna=(j.balances||[]).find(x=>{try{return rawAddress(x?.jetton?.address||x?.jetton?.master_address)===masterRaw}catch(e){return false}});
+    if(tuna){
+      let wr=tuna.wallet_address?.address||tuna.wallet_address||tuna.jetton_wallet_address?.address||tuna.jetton_wallet_address;
+      let wallet=wr?Address.parse(wr).toString({testOnly:true,bounceable:true}):null;
+      if(!wallet) wallet=await getJettonWalletDirect(owner);
+      return {balance:BigInt(tuna.balance||0),wallet};
+    }
+  }catch(e){}
+  try{
+    const wallet=await getJettonWalletDirect(owner);
+    const j=await api(`/blockchain/accounts/${rawAddress(wallet)}/methods/get_wallet_data`);
     const b=j?.decoded?.balance;
-    if(b!==undefined && b!==null) return BigInt(b);
+    if(b!==undefined&&b!==null) return {balance:BigInt(b),wallet};
+    return null;
   }catch(e){}
-  // Indexer fallback for old/cached testnet data.
-  try{
-    const j=await api(`/accounts/${encodeURIComponent(owner)}/jettons`);
-    const tuna=(j.balances||[]).find(x=>{
-      try{return rawAddress(x.jetton.address)===rawAddress(TUNA_MASTER)}catch(e){return false}
-    });
-    if(tuna) return BigInt(tuna.balance);
-  }catch(e){}
-  return 0n;
+  return null;
 }
 
 async function getTonBalance(owner){
@@ -152,8 +119,25 @@ function setBaselineIfNeeded(value){
   if(!old && value>0) localStorage.setItem(key,String(value));
 }
 function baseline(){
-  const n=Number(localStorage.getItem("tuna_v8_baseline")||"0");
+  const n=Number(localStorage.getItem("tuna_v9_baseline")||"0");
   return Number.isFinite(n)?n:0;
+}
+
+function costKey(owner){return `tuna_v9_cost_${rawAddress(owner)}`}
+function readCost(owner){try{const x=JSON.parse(localStorage.getItem(costKey(owner))||"null");return x&&Number.isFinite(x.cost)&&Number.isFinite(x.tuna)?x:null}catch(e){return null}}
+function writeCost(owner,x){try{localStorage.setItem(costKey(owner),JSON.stringify(x))}catch(e){}}
+function updateCostBasis(owner,currentTuna,currentRate){
+  const old=readCost(owner);
+  if(!old){const cost=currentTuna*currentRate;writeCost(owner,{cost,tuna:currentTuna});return cost}
+  const delta=currentTuna-old.tuna;
+  // Balance changes are treated as capital-flow changes at the current on-chain rate.
+  // This keeps principal out of the displayed unrealized P/L.
+  if(Math.abs(delta)>0.000000001){
+    old.cost=Math.max(0,old.cost+delta*currentRate);
+    old.tuna=currentTuna;
+    writeCost(owner,old);
+  }
+  return Math.max(0,old.cost);
 }
 
 async function load(){
@@ -191,22 +175,34 @@ async function load(){
     $("apy").textContent="—";
   }
 
-  // Resolve TUNA wallet and balance independently from analytics.
-  try{ jettonWallet=await getJettonWalletDirect(owner); }catch(e){ jettonWallet=null; }
-  try{ tunaBalance=await getTunaBalance(owner); }catch(e){ tunaBalance=0n; }
-
+  let state=null;
+  try{ state=await getTunaState(owner); }catch(e){}
+  if(!state){
+    tunaBalance=0n;
+    jettonWallet=null;
+    $("bal").textContent="—";
+    $("value").textContent="—";
+    $("jw").textContent="Данные недоступны";
+    $("unstake").textContent="Вывести TUNA";
+    $("unstake").disabled=true;
+    status("Не удалось прочитать TUNA из Testnet TonAPI. Баланс НЕ считается нулевым. Нажми «Обновить данные».\nВывод заблокирован до подтверждения фактического TUNA Jetton Wallet.");
+    $("refresh").disabled=false;
+    return;
+  }
+  tunaBalance=state.balance; jettonWallet=state.wallet;
   const tuna=Number(tunaBalance)/1e9;
   const value=tuna*tunaRate;
-  if(value>0) setBaselineIfNeeded(value);
-  const b=baseline();
-  const profit=value-b;
+  const cost=tunaRate?updateCostBasis(owner,tuna,tunaRate):0;
+  const profit=tunaRate?value-cost:0;
 
   $("tonBal").textContent=fmt(ton,4)+" TON";
   $("bal").textContent=fmt(tuna,9)+" TUNA";
-  $("value").textContent=tunaRate>0?fmt(value,6)+" TON":"—";
+  $("value").textContent=tunaRate>0?fmt(value,6):"—";
   $("profit").textContent=tunaRate>0?((profit>=0?"+":"")+fmt(profit,6)+" TON"):"—";
-  $("updated").textContent=new Date().toLocaleTimeString("ru-RU");
-  $("jw").textContent=jettonWallet||"—";
+  $("updated").textContent="обновлено "+new Date().toLocaleTimeString("ru-RU");
+  $("jw").textContent=jettonWallet?`${jettonWallet.slice(0,7)}…${jettonWallet.slice(-6)}`:"Не найден";
+  $("available").textContent=fmt(Math.max(0,ton-1.1),4)+" TON";
+  $("profit2").textContent=$("profit").textContent;
 
   // SDK behavior: available amount = wallet balance - 1.1 TON;
   // stake(amount) adds another 1 TON fee reserve to the message value.
@@ -226,6 +222,12 @@ async function load(){
     "\nПеред подписью проверь адрес и сумму в Tonkeeper."
   );
 }
+
+function setPercent(p){
+  const txt=$("tonBal").textContent.replace(/[^0-9,.-]/g,"").replace(",",".");
+  const ton=Number(txt)||0; $("stakeAmount").value=Math.max(0,(ton-1.1)*p).toFixed(4);
+}
+$("q25").onclick=()=>setPercent(.25);$("q50").onclick=()=>setPercent(.5);$("q75").onclick=()=>setPercent(.75);$("q100").onclick=()=>$("maxStake").click();
 
 ui.onStatusChange(load);
 load();
@@ -264,6 +266,8 @@ $("stake").onclick=async()=>{
 
     await ui.sendTransaction({
       validUntil:Math.floor(Date.now()/1000)+600,
+      network:TESTNET,
+      from:w.account.address,
       messages:[{address:POOL,amount:total.toString(),payload}]
     });
     status("Стейкинг подписан.\nПодожди подтверждение сети, затем нажми «Обновить данные».");
@@ -296,6 +300,8 @@ $("unstake").onclick=async()=>{
 
     await ui.sendTransaction({
       validUntil:Math.floor(Date.now()/1000)+600,
+      network:TESTNET,
+      from:w.account.address,
       messages:[{address:jettonWallet,amount:"1050000000",payload}]
     });
     status("Вывод подписан. Проверь транзакцию в Tonviewer.");
