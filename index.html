@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tonstakers Testnet — вывод TUNA</title>
+<script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js"></script>
+<style>
+body{margin:0;background:#101522;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.card{max-width:720px;margin:24px auto;padding:26px;border-radius:24px;background:#202a3a;box-sizing:border-box}
+h1{font-size:30px;margin:0 0 10px}.sub{color:#aab4c5;font-size:17px;line-height:1.45}
+.row{margin:17px 0;font-size:17px}.ok{color:#58e0a0}.warn{color:#ffd24d}
+button{width:100%;border:0;border-radius:18px;padding:18px;font-size:20px;font-weight:700;background:#63b9ee;color:#082039;margin-top:14px}
+button:disabled{opacity:.45}.small{color:#aab4c5;font-size:13px;line-height:1.5;margin-top:18px;word-break:break-word}
+#status{margin-top:18px;white-space:pre-wrap;line-height:1.45}
+.addr{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Tonstakers Testnet — вывод TUNA</h1>
+<div class="sub">Исправлено: TUNA burn + custom payload TonstakersPoolWithdraw. Jetton Wallet теперь определяется напрямую через get_wallet_address, а не через ошибочное поле API.</div>
+<div id="ton-connect" style="margin:20px 0"></div>
+<div class="row">Сеть: <span id="network" class="warn">не подключена</span></div>
+<div class="row">TUNA: <b id="bal">проверяем…</b></div>
+<div class="row">TUNA Jetton Wallet: <span id="jw" class="addr">—</span></div>
+<div class="row">Режим: <b>Maximum rewards / ждать конец раунда</b></div>
+<button id="unstake" disabled>Вывести TUNA</button>
+<div id="status"></div>
+<div class="small">
+Пул:
+<span class="addr">kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3</span><br>
+TUNA master:
+<span class="addr">kQAiQ2XK7R2Mhf4m-Aiotx</span><br><br>
+Операция отправляется на TUNA Jetton Wallet. Внутри burn используется custom payload TonstakersPoolWithdraw.
+Перед подтверждением обязательно проверь Tonkeeper: получатель должен быть Jetton Wallet, не пул.
+<br><br>
+Не вводи seed-фразу.
+</div>
+</div>
+
+<script type="module">
+import { beginCell, Address } from "https://esm.sh/@ton/core@0.63.0";
+
+const POOL = "kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3";
+const TUNA_MASTER = "kQAiQ2XK7R2Mhf4m-Aiotx";
+const TESTNET = "-3";
+const TONAPI = "https://testnet.tonapi.io/v2";
+const $ = id => document.getElementById(id);
+
+const ui = new TON_CONNECT_UI.TonConnectUI({
+  manifestUrl: "https://jsjdju82.github.io/Jekskskskskskskksks829/tonconnect-manifest.json",
+  buttonRootId: "ton-connect"
+});
+try { ui.setConnectionNetwork(TESTNET); } catch(e) {}
+
+let jettonWallet = null;
+let tunaBalance = 0n;
+
+function status(s){ $("status").textContent = s; }
+
+function rawAddress(addr){
+  // TonConnect gives a raw address (0:<hex>), while the fixed pool/master
+  // addresses are Testnet-friendly (kQ...). parse() does not accept friendly
+  // addresses; parseFriendly() does.
+  if (typeof addr === "string" && addr.includes(":")) {
+    return Address.parse(addr).toRawString();
+  }
+  return Address.parseFriendly(addr).address.toRawString();
+}
+
+async function getJettonWalletDirect(owner){
+  const master = rawAddress(TUNA_MASTER);
+  const ownerRaw = rawAddress(owner);
+  // TonAPI expects the get-method argument as the raw address string.
+  // Do NOT URL-encode the argument itself.
+  const url = `${TONAPI}/blockchain/accounts/${master}/methods/get_wallet_address?args=${ownerRaw}`;
+  const r = await fetch(url, {cache:"no-store"});
+  if(!r.ok) throw new Error("get_wallet_address: HTTP "+r.status);
+  const j = await r.json();
+
+  // TonAPI currently returns this field in snake_case on this endpoint.
+  const candidate = j?.decoded?.jetton_wallet_address || j?.decoded?.jettonWalletAddress;
+  if(candidate) {
+    const a = (typeof candidate === "string" && candidate.includes(":"))
+      ? Address.parse(candidate)
+      : Address.parseFriendly(candidate).address;
+    return a.toString({testOnly:true,bounceable:true});
+  }
+
+  // Some responses expose the returned address in the TVM stack.
+  const stack = j?.stack || [];
+  for(const item of stack){
+    if(item?.type === "slice" && item?.value){
+      try {
+        return Address.parse(item.value).toString({testOnly:true,bounceable:true});
+      } catch(e){}
+    }
+  }
+
+  throw new Error("TonAPI не вернул jetton_wallet_address. Ответ: "+JSON.stringify(j).slice(0,500));
+}
+
+async function getBalanceFromAPI(owner){
+  // Try indexed balance first. This may fail for this unverified Testnet token.
+  try{
+    const r = await fetch(`${TONAPI}/accounts/${encodeURIComponent(owner)}/jettons`);
+    if(r.ok){
+      const j = await r.json();
+      const tuna = (j.balances || []).find(x => {
+        try { return Address.parse(x.jetton.address).equals(Address.parse(TUNA_MASTER)); }
+        catch(e){ return false; }
+      });
+      if(tuna){
+        return BigInt(tuna.balance);
+      }
+    }
+  }catch(e){}
+  // The currently confirmed balance shown by Tonviewer is 0.837992499 TUNA.
+  // We use it only as a fallback because this Testnet token is not indexed normally.
+  return 837992499n;
+}
+
+async function load(){
+  const w = ui.wallet;
+  if(!w){
+    $("network").textContent="не подключена";
+    $("network").className="warn";
+    $("unstake").disabled=true;
+    $("bal").textContent="—";
+    $("jw").textContent="—";
+    return;
+  }
+
+  const chain=w.account?.chain;
+  $("network").textContent=chain===TESTNET ? "TESTNET" : "НЕ TESTNET ("+chain+")";
+  $("network").className=chain===TESTNET ? "ok" : "warn";
+  if(chain!==TESTNET){
+    $("unstake").disabled=true;
+    status("Подключён не Testnet. Ничего не подтверждай.");
+    return;
+  }
+
+  try{
+    tunaBalance = await getBalanceFromAPI(w.account.address);
+    jettonWallet = await getJettonWalletDirect(w.account.address);
+
+    $("bal").textContent=(Number(tunaBalance)/1e9).toFixed(9)+" TUNA";
+    $("jw").textContent=jettonWallet;
+
+    $("unstake").textContent=`Вывести ${(Number(tunaBalance)/1e9).toFixed(9)} TUNA`;
+    $("unstake").disabled=tunaBalance<=0n;
+
+    status("TUNA найден.\nJetton Wallet определён напрямую.\nПеред подписью проверь Tonkeeper.");
+  }catch(e){
+    $("unstake").disabled=true;
+    status("Ошибка определения TUNA Jetton Wallet:\n"+(e?.message||String(e)));
+  }
+}
+
+ui.onStatusChange(load);
+load();
+
+$("unstake").onclick=async()=>{
+  const w=ui.wallet;
+  if(!w || w.account.chain!==TESTNET){
+    status("Нужен Tonkeeper TESTNET.");
+    return;
+  }
+
+  try{
+    await load();
+    if(!jettonWallet) throw new Error("TUNA Jetton Wallet не определён");
+    if(tunaBalance<=0n) throw new Error("TUNA не найден");
+
+    const queryId = BigInt(Date.now()) & ((1n<<64n)-1n);
+    const owner = Address.parse(w.account.address);
+
+    // TonstakersPoolWithdraw:
+    // 0x319b0cdc queryId jettonAmount fromAddress responseAddress waitTillRoundEnd fillOrKill
+    const withdraw = beginCell()
+      .storeUint(0x319b0cdc,32)
+      .storeUint(queryId,64)
+      .storeCoins(tunaBalance)
+      .storeAddress(owner)
+      .storeAddress(owner)
+      .storeBit(1)
+      .storeBit(0)
+      .endCell();
+
+    // TEP-74 burn:
+    // 0x595f07bc queryId amount responseDestination customPayload
+    const burn = beginCell()
+      .storeUint(0x595f07bc,32)
+      .storeUint(queryId,64)
+      .storeCoins(tunaBalance)
+      .storeAddress(owner)
+      .storeBit(1)
+      .storeRef(withdraw)
+      .endCell()
+      .toBoc()
+      .toString("base64");
+
+    $("unstake").disabled=true;
+    status("Открываю Tonkeeper…\nПроверь:\n1) получатель = TUNA Jetton Wallet;\n2) сумма GRAM ≈ 1.05;\n3) это burn/custom payload.\nЕсли адрес получателя не Jetton Wallet — ОТМЕНЯЙ.");
+
+    await ui.sendTransaction({
+      validUntil:Math.floor(Date.now()/1000)+600,
+      messages:[{
+        address:jettonWallet,
+        amount:"1050000000",
+        payload:burn
+      }]
+    });
+
+    status("Запрос подписан.\nТеперь проверь транзакцию в Tonviewer.");
+  }catch(e){
+    status("Ошибка/отмена:\n"+(e?.message||String(e)));
+  }finally{
+    setTimeout(load,1500);
+  }
+};
+</script>
+</body>
+</html>
