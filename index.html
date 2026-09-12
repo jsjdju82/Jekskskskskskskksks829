@@ -19,7 +19,7 @@ button:disabled{opacity:.45}input{background:#fff;color:#111;border:0}.small{col
 <body>
 <div class="card">
 <h1>Tonstakers Testnet — Stake • TUNA</h1>
-<div class="sub">V8: стейкинг, TUNA, реальный курс TUNA → TON, APY и расчёт прибыли. Данные читаются из Testnet-пула; ничего не рисуется.</div>
+<div class="sub">V8 FINAL: стейкинг, TUNA, on-chain курс TUNA → TON, APY и расчёт прибыли. Данные читаются из Testnet-пула; ничего не рисуется.</div>
 <div id="ton-connect" style="margin:20px 0"></div>
 <div class="row">Сеть: <span id="network" class="warn">не подключена</span></div>
 <div class="row">TON в кошельке: <b id="tonBal">—</b></div>
@@ -90,7 +90,7 @@ async function api(path){
 
 async function getJettonWalletDirect(owner){
   const master=rawAddress(TUNA_MASTER), ownerRaw=rawAddress(owner);
-  const j=await api(`/blockchain/accounts/${master}/methods/get_wallet_address?args=${ownerRaw}`);
+  const j=await api(`/blockchain/accounts/${master}/methods/get_wallet_address?args=${encodeURIComponent(ownerRaw)}`);
   const candidate=j?.decoded?.jetton_wallet_address||j?.decoded?.jettonWalletAddress;
   if(candidate){
     const a=(typeof candidate==="string"&&candidate.includes(":"))?Address.parse(candidate):Address.parseFriendly(candidate).address;
@@ -100,6 +100,13 @@ async function getJettonWalletDirect(owner){
 }
 
 async function getTunaBalance(owner){
+  try{
+    const jw=await getJettonWalletDirect(owner);
+    const j=await api(`/blockchain/accounts/${rawAddress(jw)}/methods/get_wallet_data`);
+    const b=j?.decoded?.balance;
+    if(b!==undefined && b!==null) return BigInt(b);
+  }catch(e){}
+  // Indexer fallback for old/cached testnet data.
   try{
     const j=await api(`/accounts/${encodeURIComponent(owner)}/jettons`);
     const tuna=(j.balances||[]).find(x=>{
@@ -119,18 +126,23 @@ async function getTonBalance(owner){
 
 async function getPoolData(){
   const a=rawAddress(POOL);
-  const [info, full]=await Promise.all([
-    api(`/blockchain/accounts/${a}/methods/get_pool_full_data`),
-    api(`/staking/pools/${a}`)
-  ]);
+  const info=await api(`/blockchain/accounts/${a}/methods/get_pool_full_data`);
   const d=info?.decoded||{};
-  const balance=Number(d.total_balance||0);
-  const supply=Number(d.supply||0);
-  const projectedBalance=Number(d.projected_balance||0);
-  const projectedSupply=Number(d.projected_supply||0);
+  const balance=Number(d.total_balance ?? d.totalBalance ?? 0);
+  const supply=Number(d.supply ?? 0);
+  const projectedBalance=Number(d.projected_balance ?? d.projectedBalance ?? 0);
+  const projectedSupply=Number(d.projected_supply ?? d.projectedSupply ?? 0);
   const rate=supply>0?balance/supply:0;
   const projected=projectedSupply>0?projectedBalance/projectedSupply:0;
-  const apy=full?.pool?.apy ?? full?.apy ?? null;
+
+  // Testnet TonAPI may not expose /staking/pools, so APY is optional.
+  // Never let an optional APY endpoint disable the stake/unstake buttons.
+  let apy=null;
+  try{
+    const full=await api(`/staking/pool/${a}`);
+    apy=full?.pool?.apy ?? full?.apy ?? null;
+  }catch(e){}
+
   return {rate,projected,apy};
 }
 
@@ -151,52 +163,68 @@ async function load(){
     ["stake","maxStake","unstake","refresh"].forEach(id=>$(id).disabled=true);
     return;
   }
+
   const chain=w.account?.chain;
   $("network").textContent=chain===TESTNET?"TESTNET":"НЕ TESTNET ("+chain+")";
   $("network").className=chain===TESTNET?"ok":"warn";
+
   if(chain!==TESTNET){
     ["stake","maxStake","unstake","refresh"].forEach(id=>$(id).disabled=true);
     status("Подключён не Testnet. Ничего не подтверждай.");
     return;
   }
 
+  const owner=w.account.address;
+  let ton=0;
+  try{ ton=await getTonBalance(owner); }catch(e){ ton=0; }
+
+  // Pool analytics are independent from transaction availability.
   try{
-    const owner=w.account.address;
-    [tunaBalance,jettonWallet]=await Promise.all([
-      getTunaBalance(owner),
-      getJettonWalletDirect(owner)
-    ]);
-    const ton=await getTonBalance(owner);
     const p=await getPoolData();
-    tunaRate=p.rate; currentApy=p.apy;
-
-    const tuna=Number(tunaBalance)/1e9;
-    const value=tuna*tunaRate;
-    setBaselineIfNeeded(value);
-    const profit=value-baseline();
-
-    $("tonBal").textContent=fmt(ton,4)+" TON";
-    $("bal").textContent=fmt(tuna,9)+" TUNA";
-    $("rate").textContent=fmt(tunaRate,9)+" TON";
-    $("value").textContent=fmt(value,6)+" TON";
+    tunaRate=p.rate||0;
+    currentApy=p.apy;
+    $("rate").textContent=tunaRate>0?fmt(tunaRate,9)+" TON":"—";
     $("apy").textContent=p.apy==null?"—":fmt(p.apy,2)+"%";
-    $("profit").textContent=(profit>=0?"+":"")+fmt(profit,6)+" TON";
-    $("updated").textContent=new Date().toLocaleTimeString("ru-RU");
-    $("jw").textContent=jettonWallet;
-
-    // SDK reserves 1.1 TON and adds 1 TON stake fee on top of amount.
-    const available=Math.max(0,ton-1.1);
-    if($("stakeAmount").value==="0") $("stakeAmount").value=available.toFixed(4);
-    $("stake").disabled=available<=0;
-    $("maxStake").disabled=available<=0;
-    $("unstake").textContent=`Вывести ${fmt(tuna,9)} TUNA`;
-    $("unstake").disabled=tunaBalance<=0n;
-    $("refresh").disabled=false;
-
-    status("Данные пула обновлены.\nКурс TUNA → TON считается из on-chain pool full data.\nПеред подписью проверь адрес и сумму в Tonkeeper.");
   }catch(e){
-    status("Ошибка обновления:\n"+(e?.message||String(e)));
+    tunaRate=0; currentApy=null;
+    $("rate").textContent="—";
+    $("apy").textContent="—";
   }
+
+  // Resolve TUNA wallet and balance independently from analytics.
+  try{ jettonWallet=await getJettonWalletDirect(owner); }catch(e){ jettonWallet=null; }
+  try{ tunaBalance=await getTunaBalance(owner); }catch(e){ tunaBalance=0n; }
+
+  const tuna=Number(tunaBalance)/1e9;
+  const value=tuna*tunaRate;
+  if(value>0) setBaselineIfNeeded(value);
+  const b=baseline();
+  const profit=value-b;
+
+  $("tonBal").textContent=fmt(ton,4)+" TON";
+  $("bal").textContent=fmt(tuna,9)+" TUNA";
+  $("value").textContent=tunaRate>0?fmt(value,6)+" TON":"—";
+  $("profit").textContent=tunaRate>0?((profit>=0?"+":"")+fmt(profit,6)+" TON"):"—";
+  $("updated").textContent=new Date().toLocaleTimeString("ru-RU");
+  $("jw").textContent=jettonWallet||"—";
+
+  // SDK behavior: available amount = wallet balance - 1.1 TON;
+  // stake(amount) adds another 1 TON fee reserve to the message value.
+  const available=Math.max(0,ton-1.1);
+  if($("stakeAmount").value==="0") $("stakeAmount").value=available.toFixed(4);
+  $("stake").disabled=available<=0;
+  $("maxStake").disabled=available<=0;
+  $("unstake").textContent=`Вывести ${fmt(tuna,9)} TUNA`;
+  $("unstake").disabled=tunaBalance<=0n || !jettonWallet;
+  $("refresh").disabled=false;
+
+  status(
+    "Кошелёк и транзакционные данные обновлены.\n"+
+    (tunaRate>0
+      ?"Курс TUNA → TON считается из on-chain get_pool_full_data."
+      :"Курс/APY временно недоступны, но это НЕ блокирует Stake/Withdraw.")+
+    "\nПеред подписью проверь адрес и сумму в Tonkeeper."
+  );
 }
 
 ui.onStatusChange(load);
@@ -220,7 +248,7 @@ $("stake").onclick=async()=>{
     const amount=toNano(amountStr);
     if(amount<=0n) throw new Error("Сумма должна быть больше 0");
     const ton=await getTonBalance(w.account.address);
-    if(Number(amount)/1e9+1>ton-0.1) throw new Error("Недостаточно TON: оставь запас на комиссии");
+    if(Number(amount)/1e9+1>ton-0.1) throw new Error("Недостаточно TON: оставь минимум 1.1 TON запаса");
 
     // Exact current Tonstakers SDK stake payload:
     // 0x47d54391, query_id=1, partner_code=0x000000106796caef.
