@@ -19,7 +19,7 @@ button:disabled{opacity:.45}.small{color:#aab4c5;font-size:13px;line-height:1.5;
 <body>
 <div class="card">
 <h1>Tonstakers Testnet — вывод TUNA</h1>
-<div class="sub">V6: точный payload Tonstakers SDK. Отправляется 0x319b0cdc напрямую в TUNA Jetton Wallet; без стандартного 0x595f07bc burn.</div>
+<div class="sub">V7: точный payload из текущего Tonstakers SDK. Стандартный TUNA burn 0x595f07bc + forward payload из двух флагов.</div>
 <div id="ton-connect" style="margin:20px 0"></div>
 <div class="row">Сеть: <span id="network" class="warn">не подключена</span></div>
 <div class="row">TUNA: <b id="bal">проверяем…</b></div>
@@ -32,7 +32,7 @@ button:disabled{opacity:.45}.small{color:#aab4c5;font-size:13px;line-height:1.5;
 <span class="addr">kQANFsYyYn-GSZ4oajUJmboDURZU-udMHf9JxzO4vYM_hFP3</span><br>
 TUNA master:
 <span class="addr">kQAiQ2XK7R2Mhf4m-Aiotx</span><br><br>
-Операция отправляется напрямую на TUNA Jetton Wallet с payload TonstakersPoolWithdraw (0x319b0cdc), как в официальном Tonstakers SDK.
+Операция отправляется на TUNA Jetton Wallet с точным payload текущего Tonstakers SDK.
 Перед подтверждением обязательно проверь Tonkeeper: получатель должен быть Jetton Wallet, не пул.
 <br><br>
 Не вводи seed-фразу.
@@ -173,22 +173,22 @@ $("unstake").onclick=async()=>{
     if(!jettonWallet) throw new Error("TUNA Jetton Wallet не определён");
     if(tunaBalance<=0n) throw new Error("TUNA не найден");
 
-    // Exact Tonstakers SDK format:
-    // 0x319b0cdc queryId:uint64 jettonAmount:coins fromAddress responseAddress
-    //            custom_payload:(Maybe ^Cell)
-    // The custom payload contains waitTillRoundEnd + fillOrKill as 2 bits.
-    // IMPORTANT: this is sent DIRECTLY to the TUNA Jetton Wallet.
+    // Exact payload from the current Tonstakers SDK:
+    // 0x595f07bc (Jetton burn)
+    // query_id = 0
+    // amount
+    // response_destination = owner
+    // forward_payload = Maybe ^Cell { waitTillRoundEnd:1, fillOrKill:1 }
     const owner = Address.parse(w.account.address);
     const payload = beginCell()
-      .storeUint(0x319b0cdc,32)
-      .storeUint(0,64)
+      .storeUint(0x595f07bc, 32)
+      .storeUint(0, 64)
       .storeCoins(tunaBalance)
-      .storeAddress(owner)
       .storeAddress(owner)
       .storeMaybeRef(
         beginCell()
-          .storeBit(1) // waitTillRoundEnd = true
-          .storeBit(0) // fillOrKill = false
+          .storeUint(0, 1) // waitTillRoundEnd = false (SDK unstake())
+          .storeUint(0, 1) // fillOrKill = false
           .endCell()
       )
       .endCell()
@@ -196,7 +196,7 @@ $("unstake").onclick=async()=>{
       .toString("base64");
 
     $("unstake").disabled=true;
-    status("Открываю Tonkeeper…\nПроверь:\n1) получатель = TUNA Jetton Wallet;\n2) сумма GRAM ≈ 1.05;\n3) операция TonstakersPoolWithdraw (0x319b0cdc).\nЕсли адрес получателя не Jetton Wallet — ОТМЕНЯЙ.");
+    status("Открываю Tonkeeper…\nПроверь:\n1) получатель = TUNA Jetton Wallet;\n2) сумма GRAM ≈ 1.05;\n3) стандартный TUNA burn (0x595f07bc) с payload SDK.\nЕсли адрес получателя не Jetton Wallet — ОТМЕНЯЙ.");
 
     await ui.sendTransaction({
       validUntil:Math.floor(Date.now()/1000)+600,
